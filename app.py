@@ -42,8 +42,10 @@ def Home_page():
     """List all available api routes."""
     return (
         f"Available Routes:<br/>"
-        f"/api/v1.0/precipitation<br/>"
+        f'<a href = "/api/v1.0/precipitation">precipitation_api</a><br/>'
         f"/api/v1.0/station"
+        f"/api/v1.0/tobs"
+        f"/api/v1.0/end_date"
         f"/api/v1.0/tobs"
         
     )
@@ -57,8 +59,7 @@ def Measurement_page():
     #Convert the query results to a dictionary using
     #`date` as the key and `prcp` as the value.
 
-    results = session.query(Measurement.prcp, Measurement.date).all()
-    tuple_list = results#.__dict__
+    tuple_list = session.query(Measurement.prcp, Measurement.date).all()
     data_dict = {}
     for row in tuple_list:
         prcp = row[0]
@@ -103,6 +104,11 @@ def Station_page():
    
 @app.route("/api/v1.0/tobs")
 def Tobs_page():
+    
+    session = Session(engine)
+
+    
+    
     station_gb = session.query(Measurement.station, func.count(Measurement.station)).group_by(Measurement.station).order_by(func.count(Measurement.station).desc())
 
     results = station_gb.first()
@@ -111,15 +117,16 @@ def Tobs_page():
     
     prev_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
     
-    station_temp = session.query(Measurement.station, Measurement.date,Measurement.tobs).filter(Measurement.station ==most_active_station["station"]).filter(Measurement.date >= prev_year).order_by(Measurement.station).all()
+    station_temp = session.query(Measurement.station, Measurement.date,Measurement.tobs,Station.name).join(Station, Measurement.station == Station.station).filter(Measurement.station ==most_active_station["station"]).filter(Measurement.date >= prev_year).order_by(Measurement.station).all()
     
     temp_list = []
     
     for row in station_temp:
         
-        active_station_temp = { "Station": row[0],
+        active_station_temp = { "Station ID": row[0],
                                 "Date": row[1],
-                                "Temp": row[2]
+                                "Temp": row[2],
+                                "Station Name":row[3]
                                }
         temp_list.append(active_station_temp)
         
@@ -131,27 +138,84 @@ def Tobs_page():
 def Start_stats(start_date): 
     active_max = session.query(Measurement.station, func.max(Measurement.tobs)).\
     filter(Measurement.date >= start_date).\
-    order_by(Measurement.station).all()
+    order_by(Measurement.station).first()
 
 
 
     active_min = session.query(Measurement.station, func.min(Measurement.tobs)).\
-    filter(Measurement.station >= start_date).\
-    order_by(Measurement.station).all()
+    filter(Measurement.date >= start_date).\
+    order_by(Measurement.station).first()
 
 
 
     active_avg = session.query(Measurement.station, func.avg(Measurement.tobs)).\
-    filter(Measurement.station >= start_date).\
-    order_by(Measurement.station).all()
+    filter(Measurement.date >= start_date).\
+    order_by(Measurement.station).first()
     
-    stat_dict = { "Max": active_max,
-                "Min": active_min,
-                "AVG": active_avg 
     
-    }
-    return jsonify(stat_dict)
 
+
+    
+    max_dict = {"TMAX": active_max[1],
+                "Station": active_max[0]
+                
+    }
+    
+    min_dict = {"TMIN": active_min[1],
+                "Station": active_min[0]
+               }
+    
+    avg_dict = {"TAVG": active_avg[1]
+                }
+    
+    stat_list = [max_dict, min_dict, avg_dict] 
+    
+    session.close()
+   
+    return jsonify(stat_list)
+
+@app.route("/api/v1.0/<start_date>/<end_date>")
+def Start_end_stats(start_date, end_date): 
+    active_max = session.query(Measurement.station, func.max(Measurement.tobs)).\
+    filter(Measurement.date >= start_date).\
+    filter(Measurement.date <= end_date).\
+    order_by(Measurement.station).first()
+
+
+
+    active_min = session.query(Measurement.station, func.min(Measurement.tobs)).\
+    filter(Measurement.date >= start_date).\
+    filter(Measurement.date <= end_date).\
+    order_by(Measurement.station).first()
+
+
+
+    active_avg = session.query(Measurement.station, func.avg(Measurement.tobs)).\
+    filter(Measurement.date >= start_date).\
+    filter(Measurement.date <= end_date).\
+    order_by(Measurement.station).first()
+    
+    
+
+
+    
+    max_dict = {"TMAX": active_max[1],
+                "Station": active_max[0]
+                
+    }
+    
+    min_dict = {"TMIN": active_min[1],
+                "Station": active_min[0]
+               }
+    
+    avg_dict = {"TAVG": active_avg[1]
+                }
+    
+    stat_list = [max_dict, min_dict, avg_dict] 
+    
+    session.close()
+   
+    return jsonify(stat_list)
 
 
 if __name__ == '__main__':
