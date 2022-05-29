@@ -43,10 +43,10 @@ def Home_page():
     return (
         f"Available Routes:<br/>"
         f'<a href = "/api/v1.0/precipitation">precipitation_api</a><br/>'
-        f"/api/v1.0/station"
-        f"/api/v1.0/tobs"
-        f"/api/v1.0/end_date"
-        f"/api/v1.0/tobs"
+        f'<a href = "/api/v1.0/station">station_api</a><br/>'
+        f'<a href = "/api/v1.0/tobs">tobs_api</a><br/>'
+        f"/api/v1.0/start_date:<br/>"
+        f"/api/v1.0/start_date/end_date:<br/>"
         
     )
 
